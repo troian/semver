@@ -94,6 +94,7 @@ func sortCmd() *cobra.Command {
 			reverse := viper.GetBool("reverse")
 			isep := viper.GetString("isep")
 			osep := viper.GetString("osep")
+			filter := viper.GetString("filter")
 
 			var input []string
 
@@ -105,7 +106,7 @@ func sortCmd() *cobra.Command {
 					return err
 				}
 
-				input = strings.Split(string(res), isep)
+				input = strings.Split(strings.TrimSuffix(string(res), "\n"), isep)
 			}
 
 			versions := make(semver.Collection, 0, len(input))
@@ -119,6 +120,17 @@ func sortCmd() *cobra.Command {
 				versions = append(versions, res)
 			}
 
+			sort.Sort(sort.Reverse(versions))
+
+			if filter != "" {
+				switch filter {
+				case "latest":
+					versions = versions[:1]
+				case "oldest":
+					versions = versions[len(versions)-1:]
+				}
+			}
+
 			if reverse {
 				sort.Sort(sort.Reverse(versions))
 			} else {
@@ -129,7 +141,7 @@ func sortCmd() *cobra.Command {
 			for i, ver := range versions {
 				out += ver.String()
 
-				if i <= len(versions) {
+				if i < len(versions)-1 {
 					out += osep
 				}
 			}
@@ -140,8 +152,9 @@ func sortCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("isep", "s", " ", "")
-	cmd.Flags().String("osep", " ", "output separator")
+	cmd.Flags().String("isep", "\n", "input separator")
+	cmd.Flags().String("osep", "\n", "output separator")
+	cmd.Flags().String("filter", "", "output filter")
 	cmd.Flags().BoolP("reverse", "r", false, "")
 
 	_ = viper.BindPFlags(cmd.Flags())
