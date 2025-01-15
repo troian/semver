@@ -1,9 +1,10 @@
 package semver
 
 import (
-	"reflect"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCollection(t *testing.T) {
@@ -18,9 +19,7 @@ func TestCollection(t *testing.T) {
 	vs := make([]*Version, len(raw))
 	for i, r := range raw {
 		v, err := NewVersion(r)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
+		require.NoError(t, err)
 
 		vs[i] = v
 	}
@@ -40,7 +39,5 @@ func TestCollection(t *testing.T) {
 		a[i] = v.String()
 	}
 
-	if !reflect.DeepEqual(a, e) {
-		t.Error("Sorting Collection failed")
-	}
+	require.Equal(t, e, a)
 }

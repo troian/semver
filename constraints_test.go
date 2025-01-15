@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseConstraint(t *testing.T) {
@@ -30,27 +32,15 @@ func TestParseConstraint(t *testing.T) {
 
 	for _, tc := range tests {
 		c, err := parseConstraint(tc.in)
-		if tc.err && err == nil {
-			t.Errorf("Expected error for %s didn't occur", tc.in)
-		} else if !tc.err && err != nil {
-			t.Errorf("Unexpected error for %s", tc.in)
-		}
-
-		// If an error was expected continue the loop and don't try the other
-		// tests as they will cause errors.
 		if tc.err {
+			require.Error(t, err)
 			continue
 		}
 
-		if tc.v != c.con.String() {
-			t.Errorf("Incorrect version found on %s", tc.in)
-		}
+		require.NoError(t, err)
 
-		f1 := reflect.ValueOf(tc.f)
-		f2 := reflect.ValueOf(constraintOps[c.origfunc])
-		if f1 != f2 {
-			t.Errorf("Wrong constraint found for %s", tc.in)
-		}
+		require.Equal(t, tc.v, c.con.String())
+		require.Equal(t, reflect.ValueOf(tc.f), reflect.ValueOf(constraintOps[c.origfunc]))
 	}
 }
 
@@ -191,6 +181,7 @@ func TestConstraintCheck(t *testing.T) {
 
 	for _, tc := range tests {
 		c, err := parseConstraint(tc.constraint)
+
 		if err != nil {
 			t.Errorf("err: %s", err)
 			continue
@@ -203,9 +194,7 @@ func TestConstraintCheck(t *testing.T) {
 		}
 
 		a, _ := c.check(v)
-		if a != tc.check {
-			t.Errorf("Constraint %q failing with %q", tc.constraint, tc.version)
-		}
+		require.Equal(t, tc.check, a)
 	}
 }
 
@@ -260,17 +249,8 @@ func TestNewConstraint(t *testing.T) {
 			continue
 		}
 
-		l := len(v.constraints)
-		if tc.ors != l {
-			t.Errorf("Expected %s to have %d ORs but got %d",
-				tc.input, tc.ors, l)
-		}
-
-		l = len(v.constraints[0])
-		if tc.count != l {
-			t.Errorf("Expected %s to have %d constraints but got %d",
-				tc.input, tc.count, l)
-		}
+		require.Len(t, v.constraints, tc.ors)
+		require.Len(t, v.constraints[0], tc.count)
 	}
 }
 
@@ -415,10 +395,7 @@ func TestConstraintsCheck(t *testing.T) {
 			continue
 		}
 
-		a := c.Check(v)
-		if a != tc.check {
-			t.Errorf("Constraint '%s' failing with '%s'", tc.constraint, tc.version)
-		}
+		require.Equal(t, tc.check, c.Check(v))
 	}
 }
 
@@ -436,10 +413,7 @@ func TestRewriteRange(t *testing.T) {
 
 	for _, tc := range tests {
 		o := rewriteRange(tc.c)
-
-		if o != tc.nc {
-			t.Errorf("Range %s rewritten incorrectly as %q instead of expected %q", tc.c, o, tc.nc)
-		}
+		require.Equal(t, tc.nc, o)
 	}
 }
 
@@ -457,9 +431,8 @@ func TestIsX(t *testing.T) {
 
 	for _, tc := range tests {
 		a := isX(tc.t)
-		if a != tc.c {
-			t.Errorf("Function isX error on %s", tc.t)
-		}
+
+		require.Equal(t, tc.c, a)
 	}
 }
 
@@ -570,27 +543,15 @@ func TestConstraintsValidate(t *testing.T) {
 	}
 
 	v, err := StrictNewVersion("1.2.3")
-	if err != nil {
-		t.Errorf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	c, err := NewConstraint("!= 1.2.5, ^2, <= 1.1.x")
-	if err != nil {
-		t.Errorf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, msgs := c.Validate(v)
-	if len(msgs) != 2 {
-		t.Error("Invalid number of validations found")
-	}
-	e := msgs[0].Error()
-	if e != "1.2.3 is less than 2" {
-		t.Error("Did not get expected message: 1.2.3 is less than 2")
-	}
-	e = msgs[1].Error()
-	if e != "1.2.3 is greater than 1.1.x" {
-		t.Error("Did not get expected message: 1.2.3 is greater than 1.1.x")
-	}
+	require.Len(t, msgs, 2)
+	require.Equal(t, "1.2.3 is less than 2", msgs[0].Error())
+	require.Equal(t, "1.2.3 is greater than 1.1.x", msgs[1].Error())
 
 	tests2 := []struct {
 		constraint, version, msg string
@@ -678,13 +639,9 @@ func TestConstraintString(t *testing.T) {
 			continue
 		}
 
-		if c.String() != tc.st {
-			t.Errorf("expected constraint from %q to be a string as %q but got %q", tc.constraint, tc.st, c.String())
-		}
-
-		if _, err = NewConstraint(c.String()); err != nil {
-			t.Errorf("expected string from constrint %q to parse as valid but got err: %s", tc.constraint, err)
-		}
+		require.Equal(t, tc.st, c.String())
+		_, err = NewConstraint(c.String())
+		require.NoError(t, err)
 	}
 }
 
@@ -704,19 +661,12 @@ func TestTextMarshalConstraints(t *testing.T) {
 
 	for _, tc := range tests {
 		cs, err := NewConstraint(tc.constraint)
-		if err != nil {
-			t.Errorf("Error creating constraints: %s", err)
-		}
+		require.NoError(t, err)
 
-		out, err2 := cs.MarshalText()
-		if err2 != nil {
-			t.Errorf("Error constraint version: %s", err2)
-		}
+		out, err := cs.MarshalText()
+		require.NoError(t, err)
 
-		got := string(out)
-		if got != tc.want {
-			t.Errorf("Error marshaling constraint, unexpected marshaled content: got=%q want=%q", got, tc.want)
-		}
+		require.Equal(t, tc.want, string(out))
 
 		// Test that this works for JSON as well as text. When JSON marshaling
 		// functions are missing it falls through to TextMarshal.
@@ -727,16 +677,13 @@ func TestTextMarshalConstraints(t *testing.T) {
 		enc := json.NewEncoder(buf)
 		enc.SetEscapeHTML(false)
 		err = enc.Encode(cs)
-		if err != nil {
-			t.Errorf("Error unmarshaling constraint: %s", err)
-		}
-		got = buf.String()
+		require.NoError(t, err)
+
 		// The encoder used here adds a newline so we add that to what we want
 		// so they align. The newline is an artifact of the testing.
+
 		want := fmt.Sprintf("%q\n", tc.want)
-		if got != want {
-			t.Errorf("Error marshaling constraint, unexpected marshaled content: got=%q want=%q", got, want)
-		}
+		require.Equal(t, want, buf.String())
 	}
 }
 
@@ -756,24 +703,16 @@ func TestTextUnmarshalConstraints(t *testing.T) {
 	for _, tc := range tests {
 		cs := Constraints{}
 		err := cs.UnmarshalText([]byte(tc.constraint))
-		if err != nil {
-			t.Errorf("Error unmarshaling constraints: %s", err)
-		}
-		got := cs.String()
-		if got != tc.want {
-			t.Errorf("Error unmarshaling constraint, unexpected object content: got=%q want=%q", got, tc.want)
-		}
+		require.NoError(t, err)
+
+		require.Equal(t, tc.want, cs.String())
 
 		// Test that this works for JSON as well as text. When JSON unmarshaling
 		// functions are missing it falls through to TextUnmarshal.
 		err = json.Unmarshal([]byte(fmt.Sprintf("%q", tc.constraint)), &cs)
-		if err != nil {
-			t.Errorf("Error unmarshaling constraints: %s", err)
-		}
-		got = cs.String()
-		if got != tc.want {
-			t.Errorf("Error unmarshaling constraint, unexpected object content: got=%q want=%q", got, tc.want)
-		}
+		require.NoError(t, err)
+
+		require.Equal(t, tc.want, cs.String())
 	}
 }
 

@@ -195,11 +195,11 @@ func bumpCmd() *cobra.Command {
 
 			switch args[0] {
 			case "major":
-				*version = version.IncMajor()
+				version = version.IncMajor()
 			case "minor":
-				*version = version.IncMinor()
+				version = version.IncMinor()
 			case "patch":
-				*version = version.IncPatch()
+				version = version.IncPatch()
 			case "prerel":
 				res := extractRegexp.FindAllStringSubmatch(version.Prerelease(), -1)
 				var newPrefix string
@@ -247,7 +247,7 @@ func bumpCmd() *cobra.Command {
 					return err
 				}
 
-				*version = nVer
+				version = nVer
 			case "build":
 			default:
 
