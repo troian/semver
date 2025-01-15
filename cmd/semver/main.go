@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/troian/semver"
 )
@@ -19,8 +20,12 @@ var (
 )
 
 func main() {
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix("SEMVER")
+
 	cmd := &cobra.Command{
-		Use: "semver",
+		Use:              "semver",
+		TraverseChildren: true,
 	}
 
 	cmd.AddCommand(
@@ -66,20 +71,9 @@ func sortCmd() *cobra.Command {
 		SilenceUsage: true,
 		Args:         cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			reverse, err := cmd.Flags().GetBool("reverse")
-			if err != nil {
-				return err
-			}
-
-			isep, err := cmd.Flags().GetString("isep")
-			if err != nil {
-				return err
-			}
-
-			osep, err := cmd.Flags().GetString("osep")
-			if err != nil {
-				return err
-			}
+			reverse := viper.GetBool("reverse")
+			isep := viper.GetString("isep")
+			osep := viper.GetString("osep")
 
 			var input []string
 
@@ -130,6 +124,8 @@ func sortCmd() *cobra.Command {
 	cmd.Flags().String("osep", " ", "output separator")
 	cmd.Flags().BoolP("reverse", "r", false, "")
 
+	_ = viper.BindPFlags(cmd.Flags())
+
 	return cmd
 }
 
@@ -139,10 +135,7 @@ func validateCmd() *cobra.Command {
 		SilenceUsage: true,
 		Args:         cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			isStdout, err := cmd.Flags().GetBool("stdout")
-			if err != nil {
-				return err
-			}
+			isStdout := viper.GetBool("stdout")
 
 			var ver string
 			if len(args) > 0 && args[0] != "-" {
@@ -156,7 +149,7 @@ func validateCmd() *cobra.Command {
 				ver = strings.TrimSpace(string(res))
 			}
 
-			_, err = semver.NewVersion(ver)
+			_, err := semver.NewVersion(ver)
 
 			if isStdout {
 				if err == nil {
@@ -173,6 +166,7 @@ func validateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().Bool("stdout", false, "")
+	_ = viper.BindPFlags(cmd.Flags())
 
 	return cmd
 }
@@ -182,11 +176,8 @@ func bumpCmd() *cobra.Command {
 		Use:          "bump",
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			prototype, err := cmd.Flags().GetString("prototype")
-			if err != nil {
-				return err
-			}
+		RunE: func(_ *cobra.Command, args []string) error {
+			prefix := viper.GetString("prefix")
 
 			version, err := semver.NewVersion(args[1])
 			if err != nil {
@@ -216,7 +207,7 @@ func bumpCmd() *cobra.Command {
 					}
 				}
 
-				if prototype == "+" {
+				if prefix == "+" {
 					if currNum != "" {
 						num, err := strconv.Atoi(currNum)
 						if err != nil {
@@ -227,8 +218,8 @@ func bumpCmd() *cobra.Command {
 						newPrefix = fmt.Sprintf("%s0", curPrefix)
 					}
 				} else {
-					if curPrefix != prototype {
-						newPrefix = fmt.Sprintf("%s0", prototype)
+					if curPrefix != prefix {
+						newPrefix = fmt.Sprintf("%s0", prefix)
 					} else if currNum != "" {
 						if currNum != "" {
 							num, err := strconv.Atoi(currNum)
@@ -259,7 +250,8 @@ func bumpCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("prototype", "p", "+", "")
+	cmd.Flags().StringP("prefix", "p", "+", "")
+	_ = viper.BindPFlags(cmd.Flags())
 
 	return cmd
 }
