@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,10 +72,11 @@ func TestStrictNewVersion(t *testing.T) {
 
 	for _, tc := range tests {
 		_, err := StrictNewVersion(tc.version)
-		if tc.err && err == nil {
-			t.Fatalf("expected error for version: %s", tc.version)
+
+		if tc.err {
+			require.Error(t, err)
 		} else if !tc.err && err != nil {
-			t.Fatalf("error for version %s: %s", tc.version, err)
+			require.NoError(t, err)
 		}
 	}
 }
@@ -138,10 +140,10 @@ func TestNewVersion(t *testing.T) {
 
 	for _, tc := range tests {
 		_, err := NewVersion(tc.version)
-		if tc.err && err == nil {
-			t.Fatalf("expected error for version: %s", tc.version)
-		} else if !tc.err && err != nil {
-			t.Fatalf("error for version %s: %s", tc.version, err)
+		if tc.err {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
 		}
 	}
 }
@@ -150,16 +152,12 @@ func TestNew(t *testing.T) {
 	// v0.1.2
 	v := New(0, 1, 2, "", "")
 
-	if v.String() != "0.1.2" {
-		t.Errorf("expected version 0.1.2 but got %q", v.String())
-	}
+	require.Equal(t, "0.1.2", v.String())
 
 	// v1.2.3-alpha.1+foo.bar
 	v = New(1, 2, 3, "alpha.1", "foo.bar")
 
-	if v.String() != "1.2.3-alpha.1+foo.bar" {
-		t.Errorf("expected version 1.2.3-alpha.1+foo.bar but got %q", v.String())
-	}
+	require.Equal(t, "1.2.3-alpha.1+foo.bar", v.String())
 }
 
 func TestOriginal(t *testing.T) {
@@ -184,38 +182,19 @@ func TestOriginal(t *testing.T) {
 
 	for _, tc := range tests {
 		v, err := NewVersion(tc)
-		if err != nil {
-			t.Errorf("Error parsing version %s", tc)
-		}
-
-		o := v.Original()
-		if o != tc {
-			t.Errorf("Error retrieving original. Expected '%s' but got '%v'", tc, v)
-		}
+		require.NoError(t, err)
+		require.Equal(t, tc, v.Original())
 	}
 }
 
 func TestParts(t *testing.T) {
 	v, err := NewVersion("1.2.3-beta.1+build.123")
-	if err != nil {
-		t.Error("Error parsing version 1.2.3-beta.1+build.123")
-	}
-
-	if v.Major() != 1 {
-		t.Error("Major() returning wrong value")
-	}
-	if v.Minor() != 2 {
-		t.Error("Minor() returning wrong value")
-	}
-	if v.Patch() != 3 {
-		t.Error("Patch() returning wrong value")
-	}
-	if v.Prerelease() != "beta.1" {
-		t.Error("Prerelease() returning wrong value")
-	}
-	if v.Metadata() != "build.123" {
-		t.Error("Metadata() returning wrong value")
-	}
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), v.Major())
+	require.Equal(t, uint64(2), v.Minor())
+	require.Equal(t, uint64(3), v.Patch())
+	require.Equal(t, "beta.1", v.Prerelease())
+	require.Equal(t, "build.123", v.Metadata())
 }
 
 func TestCoerceString(t *testing.T) {
@@ -243,14 +222,8 @@ func TestCoerceString(t *testing.T) {
 
 	for _, tc := range tests {
 		v, err := NewVersion(tc.version)
-		if err != nil {
-			t.Errorf("Error parsing version %s", tc)
-		}
-
-		s := v.String()
-		if s != tc.expected {
-			t.Errorf("Error generating string. Expected '%s' but got '%s'", tc.expected, s)
-		}
+		require.NoError(t, err)
+		require.Equal(t, tc.expected, v.String())
 	}
 }
 
@@ -283,23 +256,11 @@ func TestCompare(t *testing.T) {
 
 	for _, tc := range tests {
 		v1, err := NewVersion(tc.v1)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
+		require.NoError(t, err)
 
 		v2, err := NewVersion(tc.v2)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
-
-		a := v1.Compare(v2)
-		e := tc.expected
-		if a != e {
-			t.Errorf(
-				"Comparison of '%s' and '%s' failed. Expected '%d', got '%d'",
-				tc.v1, tc.v2, e, a,
-			)
-		}
+		require.NoError(t, err)
+		require.Equal(t, tc.expected, v1.Compare(v2))
 	}
 }
 
@@ -316,23 +277,12 @@ func TestLessThan(t *testing.T) {
 
 	for _, tc := range tests {
 		v1, err := NewVersion(tc.v1)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
+		require.NoError(t, err)
 
 		v2, err := NewVersion(tc.v2)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
+		require.NoError(t, err)
 
-		a := v1.LessThan(v2)
-		e := tc.expected
-		if a != e {
-			t.Errorf(
-				"Comparison of '%s' and '%s' failed. Expected '%t', got '%t'",
-				tc.v1, tc.v2, e, a,
-			)
-		}
+		require.Equal(t, tc.expected, v1.LessThan(v2))
 	}
 }
 
@@ -349,23 +299,12 @@ func TestLessThanEqual(t *testing.T) {
 
 	for _, tc := range tests {
 		v1, err := NewVersion(tc.v1)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
+		require.NoError(t, err)
 
 		v2, err := NewVersion(tc.v2)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
+		require.NoError(t, err)
 
-		a := v1.LessThanEqual(v2)
-		e := tc.expected
-		if a != e {
-			t.Errorf(
-				"Comparison of '%s' and '%s' failed. Expected '%t', got '%t'",
-				tc.v1, tc.v2, e, a,
-			)
-		}
+		require.Equal(t, tc.expected, v1.LessThanEqual(v2))
 	}
 }
 
@@ -389,23 +328,11 @@ func TestGreaterThan(t *testing.T) {
 
 	for _, tc := range tests {
 		v1, err := NewVersion(tc.v1)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
+		require.NoError(t, err)
 
 		v2, err := NewVersion(tc.v2)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
-
-		a := v1.GreaterThan(v2)
-		e := tc.expected
-		if a != e {
-			t.Errorf(
-				"Comparison of '%s' and '%s' failed. Expected '%t', got '%t'",
-				tc.v1, tc.v2, e, a,
-			)
-		}
+		require.NoError(t, err)
+		require.Equal(t, tc.expected, v1.GreaterThan(v2))
 	}
 }
 
@@ -422,23 +349,11 @@ func TestGreaterThanEqual(t *testing.T) {
 
 	for _, tc := range tests {
 		v1, err := NewVersion(tc.v1)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
+		require.NoError(t, err)
 
 		v2, err := NewVersion(tc.v2)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
-
-		a := v1.GreaterThanEqual(v2)
-		e := tc.expected
-		if a != e {
-			t.Errorf(
-				"Comparison of '%s' and '%s' failed. Expected '%t', got '%t'",
-				tc.v1, tc.v2, e, a,
-			)
-		}
+		require.NoError(t, err)
+		require.Equal(t, tc.expected, v1.GreaterThanEqual(v2))
 	}
 }
 
@@ -458,14 +373,7 @@ func TestEqual(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		a := tc.v1.Equal(tc.v2)
-		e := tc.expected
-		if a != e {
-			t.Errorf(
-				"Comparison of '%s' and '%s' failed. Expected '%t', got '%t'",
-				tc.v1, tc.v2, e, a,
-			)
-		}
+		require.Equal(t, tc.expected, tc.v1.Equal(tc.v2))
 	}
 }
 
@@ -493,10 +401,9 @@ func TestInc(t *testing.T) {
 
 	for _, tc := range tests {
 		v1, err := NewVersion(tc.v1)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
-		var v2 Version
+		require.NoError(t, err)
+
+		var v2 *Version
 		switch tc.how {
 		case "patch":
 			v2 = v1.IncPatch()
@@ -504,25 +411,12 @@ func TestInc(t *testing.T) {
 			v2 = v1.IncMinor()
 		case "major":
 			v2 = v1.IncMajor()
+		default:
+			t.Fatalf("invalid case")
 		}
 
-		a := v2.String()
-		e := tc.expected
-		if a != e {
-			t.Errorf(
-				"Inc %q failed. Expected %q got %q",
-				tc.how, e, a,
-			)
-		}
-
-		a = v2.Original()
-		e = tc.expectedOriginal
-		if a != e {
-			t.Errorf(
-				"Inc %q failed. Expected original %q got %q",
-				tc.how, e, a,
-			)
-		}
+		require.Equal(t, tc.expected, v2.String())
+		require.Equal(t, tc.expectedOriginal, v2.Original())
 	}
 }
 
@@ -542,32 +436,14 @@ func TestSetPrerelease(t *testing.T) {
 
 	for _, tc := range tests {
 		v1, err := NewVersion(tc.v1)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
+		require.NoError(t, err)
 
 		v2, err := v1.SetPrerelease(tc.prerelease)
-		if err != tc.expectedErr {
-			t.Errorf("Expected to get err=%s, but got err=%s", tc.expectedErr, err)
-		}
+		require.Equal(t, tc.expectedErr, err)
 
-		a := v2.Prerelease()
-		e := tc.expectedPrerelease
-		if a != e {
-			t.Errorf("Expected prerelease value=%q, but got %q", e, a)
-		}
-
-		a = v2.String()
-		e = tc.expectedVersion
-		if a != e {
-			t.Errorf("Expected version string=%q, but got %q", e, a)
-		}
-
-		a = v2.Original()
-		e = tc.expectedOriginal
-		if a != e {
-			t.Errorf("Expected version original=%q, but got %q", e, a)
-		}
+		require.Equal(t, tc.expectedPrerelease, v2.Prerelease())
+		require.Equal(t, tc.expectedVersion, v2.String())
+		require.Equal(t, tc.expectedOriginal, v2.Original())
 	}
 }
 
@@ -587,32 +463,14 @@ func TestSetMetadata(t *testing.T) {
 
 	for _, tc := range tests {
 		v1, err := NewVersion(tc.v1)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
+		require.NoError(t, err)
 
 		v2, err := v1.SetMetadata(tc.metadata)
-		if err != tc.expectedErr {
-			t.Errorf("Expected to get err=%s, but got err=%s", tc.expectedErr, err)
-		}
+		require.Equal(t, tc.expectedErr, err)
 
-		a := v2.Metadata()
-		e := tc.expectedMetadata
-		if a != e {
-			t.Errorf("Expected metadata value=%q, but got %q", e, a)
-		}
-
-		a = v2.String()
-		e = tc.expectedVersion
-		if e != a {
-			t.Errorf("Expected version string=%q, but got %q", e, a)
-		}
-
-		a = v2.Original()
-		e = tc.expectedOriginal
-		if a != e {
-			t.Errorf("Expected version original=%q, but got %q", e, a)
-		}
+		require.Equal(t, tc.expectedMetadata, v2.Metadata())
+		require.Equal(t, tc.expectedVersion, v2.String())
+		require.Equal(t, tc.expectedOriginal, v2.Original())
 	}
 }
 
@@ -626,64 +484,41 @@ func TestOriginalVPrefix(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		v1, _ := NewVersion(tc.version)
-		a := v1.originalVPrefix()
-		e := tc.vprefix
-		if a != e {
-			t.Errorf("Expected vprefix=%q, but got %q", e, a)
-		}
+		v1, err := NewVersion(tc.version)
+		require.NoError(t, err)
+		require.Equal(t, tc.vprefix, v1.originalVPrefix())
 	}
 }
 
 func TestJsonMarshal(t *testing.T) {
 	sVer := "1.1.1"
 	x, err := StrictNewVersion(sVer)
-	if err != nil {
-		t.Errorf("Error creating version: %s", err)
-	}
-	out, err2 := json.Marshal(x)
-	if err2 != nil {
-		t.Errorf("Error marshaling version: %s", err2)
-	}
-	got := string(out)
-	want := fmt.Sprintf("%q", sVer)
-	if got != want {
-		t.Errorf("Error marshaling unexpected marshaled content: got=%q want=%q", got, want)
-	}
+	require.NoError(t, err)
+
+	out, err := json.Marshal(x)
+	require.NoError(t, err)
+
+	require.Equal(t, fmt.Sprintf("%q", sVer), string(out))
 }
 
 func TestJsonUnmarshal(t *testing.T) {
 	sVer := "1.1.1"
 	ver := &Version{}
 	err := json.Unmarshal([]byte(fmt.Sprintf("%q", sVer)), ver)
-	if err != nil {
-		t.Errorf("Error unmarshaling version: %s", err)
-	}
-	got := ver.String()
-	want := sVer
-	if got != want {
-		t.Errorf("Error unmarshaling unexpected object content: got=%q want=%q", got, want)
-	}
+	require.NoError(t, err)
+	require.Equal(t, sVer, ver.String())
 }
 
 func TestTextMarshal(t *testing.T) {
 	sVer := "1.1.1"
 
 	x, err := StrictNewVersion(sVer)
-	if err != nil {
-		t.Errorf("Error creating version: %s", err)
-	}
+	require.NoError(t, err)
 
-	out, err2 := x.MarshalText()
-	if err2 != nil {
-		t.Errorf("Error marshaling version: %s", err2)
-	}
+	out, err := x.MarshalText()
+	require.NoError(t, err)
 
-	got := string(out)
-	want := sVer
-	if got != want {
-		t.Errorf("Error marshaling unexpected marshaled content: got=%q want=%q", got, want)
-	}
+	require.Equal(t, sVer, string(out))
 }
 
 func TestTextUnmarshal(t *testing.T) {
@@ -691,50 +526,29 @@ func TestTextUnmarshal(t *testing.T) {
 	ver := &Version{}
 
 	err := ver.UnmarshalText([]byte(sVer))
-	if err != nil {
-		t.Errorf("Error unmarshaling version: %s", err)
-	}
-
-	got := ver.String()
-	want := sVer
-	if got != want {
-		t.Errorf("Error unmarshaling unexpected object content: got=%q want=%q", got, want)
-	}
+	require.NoError(t, err)
+	require.Equal(t, sVer, ver.String())
 }
 
 func TestSQLScanner(t *testing.T) {
 	sVer := "1.1.1"
 	x, err := StrictNewVersion(sVer)
-	if err != nil {
-		t.Errorf("Error creating version: %s", err)
-	}
+	require.NoError(t, err)
+
 	var s sql.Scanner = x
-	var out *Version
-	var ok bool
-	if out, ok = s.(*Version); !ok {
-		t.Errorf("Error expected Version type, got=%T want=%T", s, Version{})
-	}
-	got := out.String()
-	want := sVer
-	if got != want {
-		t.Errorf("Error sql scanner unexpected scan content: got=%q want=%q", got, want)
-	}
+	assert.IsType(t, &Version{}, s)
+	require.Equal(t, sVer, s.(*Version).String())
 }
 
 func TestDriverValuer(t *testing.T) {
 	sVer := "1.1.1"
 	x, err := StrictNewVersion(sVer)
-	if err != nil {
-		t.Errorf("Error creating version: %s", err)
-	}
+	require.NoError(t, err)
+
 	got, err := x.Value()
-	if err != nil {
-		t.Fatalf("Error getting value, got %v", err)
-	}
-	want := sVer
-	if got != want {
-		t.Errorf("Error driver valuer unexpected value content: got=%q want=%q", got, want)
-	}
+	require.NoError(t, err)
+
+	require.Equal(t, sVer, got)
 }
 
 func TestValidatePrerelease(t *testing.T) {
@@ -750,9 +564,8 @@ func TestValidatePrerelease(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		if err := validatePrerelease(tc.pre); err != tc.expected {
-			t.Errorf("Unexpected error %q for prerelease %q", err, tc.pre)
-		}
+		err := validatePrerelease(tc.pre)
+		require.Equal(t, tc.expected, err)
 	}
 }
 
@@ -770,9 +583,8 @@ func TestValidateMetadata(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		if err := validateMetadata(tc.meta); err != tc.expected {
-			t.Errorf("Unexpected error %q for metadata %q", err, tc.meta)
-		}
+		err := validateMetadata(tc.meta)
+		require.Equal(t, tc.expected, err)
 	}
 }
 
