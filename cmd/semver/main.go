@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +15,12 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/troian/semver"
+)
+
+type ctxValue string
+
+var (
+	ctxValueVersion = ctxValue("version")
 )
 
 var (
@@ -38,6 +46,18 @@ func main() {
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func setCmdVersion(cmd *cobra.Command, version *semver.Version) error {
+	v := cmd.Context().Value(ctxValueVersion)
+	if v == nil {
+		return errors.New("client context not set")
+	}
+
+	versionPtr := v.(*semver.Version)
+	*versionPtr = *version
+
+	return nil
 }
 
 func compareCmd() *cobra.Command {
@@ -176,38 +196,102 @@ func bumpCmd() *cobra.Command {
 		Use:          "bump",
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(2),
-		RunE: func(_ *cobra.Command, args []string) error {
-			prefix := viper.GetString("prefix")
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			ctx := context.WithValue(cmd.Context(), ctxValueVersion, &semver.Version{})
+			cmd.SetContext(ctx)
 
-			version, err := semver.NewVersion(args[1])
-			if err != nil {
-				return err
+			return nil
+		},
+
+		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
+			ver, valid := cmd.Context().Value(ctxValueVersion).(*semver.Version)
+			if !valid {
+				return
 			}
 
-			switch args[0] {
-			case "major":
-				version = version.IncMajor()
-			case "minor":
-				version = version.IncMinor()
-			case "patch":
-				version = version.IncPatch()
-			case "prerel":
-				res := extractRegexp.FindAllStringSubmatch(version.Prerelease(), -1)
-				var newPrefix string
-				var curPrefix string
-				var currNum string
+			fmt.Printf("%s", ver.String())
+		},
+	}
 
-				if len(res) > 0 {
-					if len(res[0]) > 1 {
-						curPrefix = res[0][1]
-					}
+	preRunE := func(cmd *cobra.Command, args []string) error {
+		version, err := semver.NewVersion(args[0])
+		if err != nil {
+			return err
+		}
 
-					if len(res[0]) > 2 {
-						currNum = res[0][2]
-					}
+		return setCmdVersion(cmd, version)
+	}
+
+	major := &cobra.Command{
+		Use:     "major",
+		Args:    cobra.ExactArgs(1),
+		PreRunE: preRunE,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ver := cmd.Context().Value(ctxValueVersion).(*semver.Version)
+
+			return setCmdVersion(cmd, ver.IncMajor())
+		},
+	}
+
+	minor := &cobra.Command{
+		Use:     "minor",
+		Args:    cobra.ExactArgs(1),
+		PreRunE: preRunE,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ver := cmd.Context().Value(ctxValueVersion).(*semver.Version)
+
+			return setCmdVersion(cmd, ver.IncMinor())
+		},
+	}
+
+	patch := &cobra.Command{
+		Use:     "patch",
+		Args:    cobra.ExactArgs(1),
+		PreRunE: preRunE,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ver := cmd.Context().Value(ctxValueVersion).(*semver.Version)
+
+			return setCmdVersion(cmd, ver.IncPatch())
+		},
+	}
+
+	prerel := &cobra.Command{
+		Use:     "prerel",
+		Args:    cobra.ExactArgs(1),
+		PreRunE: preRunE,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			prefix := viper.GetString("prefix")
+			version := cmd.Context().Value(ctxValueVersion).(*semver.Version)
+
+			res := extractRegexp.FindAllStringSubmatch(version.Prerelease(), -1)
+			var newPrefix string
+			var curPrefix string
+			var currNum string
+
+			if len(res) > 0 {
+				if len(res[0]) > 1 {
+					curPrefix = res[0][1]
 				}
 
-				if prefix == "+" {
+				if len(res[0]) > 2 {
+					currNum = res[0][2]
+				}
+			}
+
+			if prefix == "+" {
+				if currNum != "" {
+					num, err := strconv.Atoi(currNum)
+					if err != nil {
+						return err
+					}
+					newPrefix = fmt.Sprintf("%s%d", curPrefix, num+1)
+				} else {
+					newPrefix = fmt.Sprintf("%s0", curPrefix)
+				}
+			} else {
+				if curPrefix != prefix {
+					newPrefix = fmt.Sprintf("%s0", prefix)
+				} else if currNum != "" {
 					if currNum != "" {
 						num, err := strconv.Atoi(currNum)
 						if err != nil {
@@ -217,41 +301,27 @@ func bumpCmd() *cobra.Command {
 					} else {
 						newPrefix = fmt.Sprintf("%s0", curPrefix)
 					}
-				} else {
-					if curPrefix != prefix {
-						newPrefix = fmt.Sprintf("%s0", prefix)
-					} else if currNum != "" {
-						if currNum != "" {
-							num, err := strconv.Atoi(currNum)
-							if err != nil {
-								return err
-							}
-							newPrefix = fmt.Sprintf("%s%d", curPrefix, num+1)
-						} else {
-							newPrefix = fmt.Sprintf("%s0", curPrefix)
-						}
-					}
 				}
-
-				nVer, err := version.SetPrerelease(newPrefix)
-				if err != nil {
-					return err
-				}
-
-				version = nVer
-			case "build":
-			default:
-
 			}
 
-			fmt.Printf("%s", version.String())
+			nVer, err := version.SetPrerelease(newPrefix)
+			if err != nil {
+				return err
+			}
 
-			return nil
+			return setCmdVersion(cmd, nVer)
 		},
 	}
 
-	cmd.Flags().StringP("prefix", "p", "+", "")
-	_ = viper.BindPFlags(cmd.Flags())
+	cmd.AddCommand(
+		major,
+		minor,
+		patch,
+		prerel,
+	)
+
+	prerel.Flags().StringP("prefix", "p", "+", "")
+	_ = viper.BindPFlags(prerel.Flags())
 
 	return cmd
 }
