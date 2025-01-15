@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // The compiled version of the regex created at init() is cached here so it
@@ -229,12 +230,12 @@ func MustParse(v string) *Version {
 func (v Version) String() string {
 	var buf bytes.Buffer
 
-	fmt.Fprintf(&buf, "%d.%d.%d", v.major, v.minor, v.patch)
+	_, _ = fmt.Fprintf(&buf, "%d.%d.%d", v.major, v.minor, v.patch)
 	if v.pre != "" {
-		fmt.Fprintf(&buf, "-%s", v.pre)
+		_, _ = fmt.Fprintf(&buf, "-%s", v.pre)
 	}
 	if v.metadata != "" {
-		fmt.Fprintf(&buf, "+%s", v.metadata)
+		_, _ = fmt.Fprintf(&buf, "+%s", v.metadata)
 	}
 
 	return buf.String()
@@ -506,11 +507,66 @@ func compareSegment(v, o uint64) int {
 	return 0
 }
 
+func TokenizePrerel(val string) []string {
+	if !strings.HasSuffix(val, ".") {
+		val += "."
+	}
+
+	var res []string
+
+	var startPos int
+
+	getState := func(r rune) int {
+		res := 1
+		if unicode.IsDigit(r) {
+			res = 0
+		}
+
+		return res
+	}
+
+	// 0 - digit
+	// 1 - letter
+	// 2 - restart
+	prevRune := 2
+
+	for pos, char := range val {
+		if (unicode.IsDigit(char) && (prevRune == 0)) || (unicode.IsLetter(char) && (prevRune == 1)) {
+			continue
+		}
+
+		if char == '.' {
+			tok := val[startPos:pos]
+			res = append(res, tok)
+			prevRune = 2
+
+			continue
+		} else if prevRune == 2 {
+			prevRune = getState(char)
+
+			startPos = pos
+
+			continue
+		}
+
+		tok := val[startPos:pos]
+		res = append(res, tok)
+		startPos = pos
+
+		prevRune = getState(char)
+	}
+
+	return res
+}
+
 func comparePrerelease(v, o string) int {
 	// split the prelease versions by their part. The separator, per the spec,
 	// is a .
-	sparts := strings.Split(v, ".")
-	oparts := strings.Split(o, ".")
+	// sparts := strings.Split(v, ".")
+	// oparts := strings.Split(o, ".")
+
+	sparts := TokenizePrerel(v)
+	oparts := TokenizePrerel(o)
 
 	// Find the longer length of the parts to know how many loop iterations to
 	// go through.
@@ -524,7 +580,7 @@ func comparePrerelease(v, o string) int {
 
 	// Iterate over each part of the prereleases to compare the differences.
 	for i := 0; i < l; i++ {
-		// Since the lentgh of the parts can be different we need to create
+		// Since the length of the parts can be different we need to create
 		// a placeholder. This is to avoid out of bounds issues.
 		stemp := ""
 		if i < slen {
@@ -564,10 +620,10 @@ func comparePrePart(s, o string) int {
 	}
 
 	if o == "" {
-		if s != "" {
-			return 1
-		}
-		return -1
+		// if s != "" {
+		return 1
+		// }
+		// return -1
 	}
 
 	// When comparing strings "99" is greater than "103". To handle
@@ -597,6 +653,7 @@ func comparePrePart(s, o string) int {
 	if si > oi {
 		return 1
 	}
+
 	return -1
 }
 
