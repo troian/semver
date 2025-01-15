@@ -4,7 +4,7 @@
 
 ### Added
 
-- #238: Add LessThanEqual and GreaterThanEqual functions (thanks @grosser)
+- #238: Add LTE and GTE functions (thanks @grosser)
 - #213: nil version equality checking (thanks @KnutZuidema)
 
 ### Changed

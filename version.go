@@ -368,30 +368,30 @@ func (v *Version) SetMetadata(metadata string) (*Version, error) {
 	return &vNext, nil
 }
 
-// LessThan tests if one version is less than another one.
-func (v *Version) LessThan(o *Version) bool {
+// LT tests if one version is less than another one.
+func (v *Version) LT(o *Version) bool {
 	return v.Compare(o) < 0
 }
 
-// LessThanEqual tests if one version is less or equal than another one.
-func (v *Version) LessThanEqual(o *Version) bool {
+// LTE tests if one version is less or equal than another one.
+func (v *Version) LTE(o *Version) bool {
 	return v.Compare(o) <= 0
 }
 
-// GreaterThan tests if one version is greater than another one.
-func (v *Version) GreaterThan(o *Version) bool {
+// GT tests if one version is greater than another one.
+func (v *Version) GT(o *Version) bool {
 	return v.Compare(o) > 0
 }
 
-// GreaterThanEqual tests if one version is greater or equal than another one.
-func (v *Version) GreaterThanEqual(o *Version) bool {
+// GTE tests if one version is greater or equal than another one.
+func (v *Version) GTE(o *Version) bool {
 	return v.Compare(o) >= 0
 }
 
-// Equal tests if two versions are equal to each other.
+// EQ tests if two versions are equal to each other.
 // Note, versions can be equal with different metadata since metadata
 // is not considered part of the comparable version.
-func (v *Version) Equal(o *Version) bool {
+func (v *Version) EQ(o *Version) bool {
 	if v == o {
 		return true
 	}

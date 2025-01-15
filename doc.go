@@ -52,7 +52,7 @@ There are two methods for comparing versions. One uses comparison methods on
 `Version` instances and the other is using Constraints. There are some important
 differences to notes between these two methods of comparison.
 
- 1. When two versions are compared using functions such as `Compare`, `LessThan`,
+ 1. When two versions are compared using functions such as `Compare`, `LT`,
     and others it will follow the specification and always include prereleases
     within the comparison. It will provide an answer valid with the comparison
     spec section at https://semver.org/#spec-item-11
