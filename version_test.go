@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestStrictNewVersion(t *testing.T) {
@@ -381,6 +383,8 @@ func TestGreaterThan(t *testing.T) {
 		{"7.43.0-SNAPSHOT.99", "7.43.0-SNAPSHOT.103", false},
 		{"7.43.0-SNAPSHOT.FOO", "7.43.0-SNAPSHOT.103", true},
 		{"7.43.0-SNAPSHOT.99", "7.43.0-SNAPSHOT.BAR", false},
+		{"7.43.0-SNAPSHOT100", "7.43.0-SNAPSHOT99", true},
+		{"7.43.0-SNAPSHOT99", "7.43.0-SNAPSHOT100", false},
 	}
 
 	for _, tc := range tests {
@@ -769,6 +773,28 @@ func TestValidateMetadata(t *testing.T) {
 		if err := validateMetadata(tc.meta); err != tc.expected {
 			t.Errorf("Unexpected error %q for metadata %q", err, tc.meta)
 		}
+	}
+}
+
+func TestPrerelParser(t *testing.T) {
+	tests := []struct {
+		val string
+		tok []string
+	}{
+		{
+			val: "rc0",
+			tok: []string{"rc", "0"},
+		},
+		{
+			val: "rc.0",
+			tok: []string{"rc", "0"},
+		},
+	}
+
+	for _, test := range tests {
+		res := TokenizePrerel(test.val)
+		require.Len(t, res, len(test.tok))
+		require.Equal(t, test.tok, res)
 	}
 }
 
