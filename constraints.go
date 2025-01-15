@@ -337,7 +337,7 @@ func constraintNotEqual(v *Version, c *constraint) (bool, error) {
 		}
 	}
 
-	eq := v.Equal(c.con)
+	eq := v.EQ(c.con)
 	if eq {
 		return false, fmt.Errorf("%s is equal to %s", v, c.orig)
 	}
@@ -463,7 +463,7 @@ func constraintTilde(v *Version, c *constraint) (bool, error) {
 		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
 	}
 
-	if v.LessThan(c.con) {
+	if v.LT(c.con) {
 		return false, fmt.Errorf("%s is less than %s", v, c.orig)
 	}
 
@@ -499,7 +499,7 @@ func constraintTildeOrEqual(v *Version, c *constraint) (bool, error) {
 		return constraintTilde(v, c)
 	}
 
-	eq := v.Equal(c.con)
+	eq := v.EQ(c.con)
 	if eq {
 		return true, nil
 	}
@@ -525,7 +525,7 @@ func constraintCaret(v *Version, c *constraint) (bool, error) {
 	}
 
 	// This less than handles prereleases
-	if v.LessThan(c.con) {
+	if v.LT(c.con) {
 		return false, fmt.Errorf("%s is less than %s", v, c.orig)
 	}
 
@@ -535,7 +535,7 @@ func constraintCaret(v *Version, c *constraint) (bool, error) {
 	if c.con.Major() > 0 || c.minorDirty {
 
 		// ^ has to be within a major range for > 0. Everything less than was
-		// filtered out with the LessThan call above. This filters out those
+		// filtered out with the LT call above. This filters out those
 		// that greater but not within the same major range.
 		eq = v.Major() == c.con.Major()
 		if eq {

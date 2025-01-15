@@ -282,7 +282,7 @@ func TestLessThan(t *testing.T) {
 		v2, err := NewVersion(tc.v2)
 		require.NoError(t, err)
 
-		require.Equal(t, tc.expected, v1.LessThan(v2))
+		require.Equal(t, tc.expected, v1.LT(v2))
 	}
 }
 
@@ -304,7 +304,7 @@ func TestLessThanEqual(t *testing.T) {
 		v2, err := NewVersion(tc.v2)
 		require.NoError(t, err)
 
-		require.Equal(t, tc.expected, v1.LessThanEqual(v2))
+		require.Equal(t, tc.expected, v1.LTE(v2))
 	}
 }
 
@@ -332,7 +332,7 @@ func TestGreaterThan(t *testing.T) {
 
 		v2, err := NewVersion(tc.v2)
 		require.NoError(t, err)
-		require.Equal(t, tc.expected, v1.GreaterThan(v2))
+		require.Equal(t, tc.expected, v1.GT(v2))
 	}
 }
 
@@ -353,7 +353,7 @@ func TestGreaterThanEqual(t *testing.T) {
 
 		v2, err := NewVersion(tc.v2)
 		require.NoError(t, err)
-		require.Equal(t, tc.expected, v1.GreaterThanEqual(v2))
+		require.Equal(t, tc.expected, v1.GTE(v2))
 	}
 }
 
@@ -373,7 +373,7 @@ func TestEqual(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		require.Equal(t, tc.expected, tc.v1.Equal(tc.v2))
+		require.Equal(t, tc.expected, tc.v1.EQ(tc.v2))
 	}
 }
 
