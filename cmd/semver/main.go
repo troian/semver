@@ -30,6 +30,7 @@ var (
 	flagOsep    = "osep"
 	flagFilter  = "filter"
 	flagStdout  = "stdout"
+	flagNewLine = "new-line"
 )
 
 var (
@@ -50,6 +51,7 @@ func main() {
 		sortCmd(),
 		validateCmd(),
 		bumpCmd(),
+		getCmd(),
 	)
 
 	if err := cmd.Execute(); err != nil {
@@ -406,6 +408,49 @@ Prefix can be specified with prefix flag.
 
 	cmd.PersistentFlags().StringP(flagPrefix, "p", "", "prerelease prefix")
 	_ = viper.BindPFlags(cmd.PersistentFlags())
+
+	return cmd
+}
+
+func getCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:  "get major|minor|patch|prerel|meta",
+		Args: cobra.ExactArgs(2),
+		RunE: func(_ *cobra.Command, args []string) error {
+			version, err := semver.NewVersion(args[1])
+			if err != nil {
+				return err
+			}
+
+			var val string
+			switch args[0] {
+			case "major":
+				val = fmt.Sprintf("%d", version.Major())
+			case "minor":
+				val = fmt.Sprintf("%d", version.Minor())
+			case "patch":
+				val = fmt.Sprintf("%d", version.Patch())
+			case "prerel":
+				val = version.Prerelease()
+			case "meta":
+				val = version.Metadata()
+			default:
+				return fmt.Errorf("invalid command. supported major|minor|patch|prerel|meta")
+			}
+
+			fmt.Printf("%s", val)
+
+			newLine := viper.GetBool(flagNewLine)
+			if newLine && val != "" {
+				fmt.Printf("\n")
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().Bool(flagNewLine, false, "print new line after value. defaults to false")
+	_ = viper.BindPFlags(cmd.Flags())
 
 	return cmd
 }
